@@ -83,6 +83,60 @@ class Sort:
 
             i = pos  # 为下一趟排序作准备
 
+    def quick_sort_inside(self, array):
+        array = copy.deepcopy(array)
+        base_ele = 0
+
+        n = len(array)
+        k = 0
+
+        i = 0
+        j = n - 1
+
+        while k < n - 1:
+            self._total_compare_number += 1
+
+            if base_ele == i:
+
+                if array[j] >= array[base_ele]:
+
+                    j = j - 1
+                else:
+                    temp = array[j]
+                    array[j] = array[base_ele]
+                    array[base_ele] = temp
+                    base_ele = j
+                    i = i + 1
+
+            elif base_ele == j:
+
+                if array[i] <= array[base_ele]:
+
+                    i = i + 1
+                else:
+                    temp = array[i]
+                    array[i] = array[base_ele]
+                    array[base_ele] = temp
+                    base_ele = i
+                    j = j - 1
+
+            k = k + 1
+
+        return (array, base_ele)
+
+    def quick_sort(self,array):
+        re = self.quick_sort_inside(array)
+        re_array = re[0]
+
+        re_n = len(re)[0]
+        base_ele = re[1]
+
+        if re_n > 2:
+            self.quick_sort(array)
+        else:
+            return re_array
+
+
     def print_result(self):
         print '排序前数组: \r'
         re = ', '.join(str(i) for i in self._number_array)
@@ -107,9 +161,12 @@ if __name__ == '__main__':
     # array = [8, 3, 2, 9, 0, 8, 10, 9, 7, 2]
     sort = Sort()
     sort.set_number_array(array)
-    sort.bubble_sort()
-    sort.print_result()
+    # sort.bubble_sort()
+    # sort.print_result()
+    #
+    # sort.reset()
+    # sort.bubble_sort_1()
+    # sort.print_result()
 
-    sort.reset()
-    sort.bubble_sort_1()
+    sort.quick_sort()
     sort.print_result()
