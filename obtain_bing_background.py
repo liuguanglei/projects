@@ -2,7 +2,11 @@
 # -*- coding:utf-8 -*-
 # -*- author:liugl -*-
 # python抓取bing主页所有背景图片
+from gevent import monkey
 
+monkey.patch_all()
+
+import gevent
 import requests
 import json
 import os
@@ -15,6 +19,7 @@ from threadpool import makeRequests
 from BeautifulSoup import BeautifulSoup
 
 g_real_url = []
+
 
 def elapse(func):
     def deco(*args, **kwargs):
@@ -35,7 +40,7 @@ def get_background_info(url):
 
 
 def download(url, name):
-    dest = r'c:\\temp\\photo'
+    dest = r'c:\\temp\\photo1'
     re = requests.get(url)
     raw = re.content
     path = dest + os.path.sep + name + ".jpg"
@@ -49,7 +54,7 @@ def rename(str):
     pattern = re.compile('[/\\\\:*?<>|"]')
     m = pattern.search(str)
     if m is not None:
-        re_s =  str.replace(m.group(), replace_str)
+        re_s = str.replace(m.group(), replace_str)
         if pattern.search(re_s) is not None:
             re_s = rename(re_s)
         return re_s
@@ -96,6 +101,7 @@ def get_one_month_background(year, month):
 
     return g_real_url.extend(download_task)
 
+
 @elapse
 def get_background_new(y=None):
     print "get_background_new start"
@@ -122,6 +128,8 @@ def get_background_new(y=None):
 
     # download_by_threadpool(real_url_list)
     download_by_threadpool(g_real_url)
+    # gevent_wrapper(g_real_url)
+
 
 def download_by_threadpool(download_task):
     size = 50
@@ -141,13 +149,16 @@ def get_one_month_by_threadpool(tasks):
 
 
 @elapse
-def gevent_wrapper(ss):
-    print "gevent " + str(ss)
+def gevent_wrapper(tasks):
+    ll = []
+    for i in tasks:
+        ll.append(gevent.spawn(download, i[0], i[1]))
+    gevent.joinall(ll)
 
 
 if __name__ == '__main__':
     # get_background()
-    # get_background_new(2015)
-    get_background_new()
+    get_background_new(2015)
+    # get_background_new()
     # get_one_month_background(2016, 9)
     # gevent_wrapper('xxx')
