@@ -13,7 +13,9 @@ import re
 
 uuid = ''  # 定义微信登陆请求中tip值
 imagesPath = os.getcwd() + '/weixin.jpg'  # 定义二维码图片路径，os.getcwd()获取当前路径
-global cj
+
+g_value = {}
+
 
 def getUUID():  # get UUID
     global uuid  # 引入全局变量uuid
@@ -37,6 +39,7 @@ def getUUID():  # get UUID
     pm = re.search(regx, data)
     code = pm.group(1)
     uuid = pm.group(2)
+    g_value['uuid'] = uuid
     print code, uuid
 
     if code == '200':
@@ -83,15 +86,30 @@ def isLoginSucess():
     if code == '201':
         print'Scan QR code successfully!'
     elif code == '200':
+        ticket = data.split("ticket=")[1].split('&')[0]
+        scan = data.split("scan=")[1]
+        g_value['ticket'] = ticket
+        g_value['scan'] = scan
         print'Logining...'
     elif code == '408':
         print'Login Timeout!'
 
-    global cj
-    for item in cj:
-        print item
-
     return code
+
+
+def get_login_param():
+    ticket = g_value['ticket']
+    uuid = g_value['uuid']
+    scan = g_value['scan']
+
+    url = "https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxnewloginpage?" \
+          "ticket=%s&" \
+          "uuid=%s&lang=zh_CN&scan=%s&fun=new&version=v2" % (ticket, uuid, scan)
+
+    request = urllib2.Request(url=url)
+    response = urllib2.urlopen(request)
+    data = response.read()
+    print data
 
 
 def send_message():
@@ -109,13 +127,10 @@ def send_message():
 # 入口函数
 def main():
     # 获取当前cookie
-    global cj
     cj = cookielib.CookieJar()
     cookie = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
     urllib2.install_opener(cookie)
 
-    for item in cj:
-        print item.value
     # 判断是否成功获取uuid
     if getUUID() == False:
         print'Get uuid unsuccessfully!'
@@ -136,3 +151,6 @@ if __name__ == '__main__':
     print'Welcome to use weixin personnal version'
     print'Please click Enter key to continue......'
     main()
+    get_login_param()
+    # send_message()
+
