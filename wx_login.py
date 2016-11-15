@@ -114,14 +114,25 @@ def get_login_param():
 
 def send_message():
     url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsendmsg?lang=zh_CN'
-    post_content = {"BaseRequest": {"Uin": 2987494401, "Sid": "j6EitZ2+zKn2m+CB",
-                                    "Skey": "@crypt_d79b14d1_77d7544fc09630ea6d29f5e2b98fcfdc",
-                                    "DeviceID": "e316042128889845"}, "Msg": {"Type": 1, "Content": "s",
-                                                                             "FromUserName": "@448c7de2807d6088e6bd93caaa25ca376e8e49939a3227128743408c5a999344",
-                                                                             "ToUserName": "filehelper",
-                                                                             "LocalID": "14791075084620093",
-                                                                             "ClientMsgId": "14791075084620093"},
-                    "Scene": 0}
+    post_content = {
+                        "BaseRequest":
+                        {
+                            "Uin": 2987494401,
+                            "Sid": "j6EitZ2+zKn2m+CB",
+                            "Skey": "@crypt_d79b14d1_77d7544fc09630ea6d29f5e2b98fcfdc",
+                            "DeviceID": "e316042128889845"
+                        },
+                        "Msg":
+                        {
+                            "Type": 1,
+                            "Content": "s",
+                            "FromUserName": "@448c7de2807d6088e6bd93caaa25ca376e8e49939a3227128743408c5a999344",
+                            "ToUserName": "filehelper",
+                            "LocalID": "14791075084620093",
+                            "ClientMsgId": "14791075084620093"
+                        },
+                        "Scene": 0
+                    }
 
 
 # 入口函数
@@ -153,4 +164,3 @@ if __name__ == '__main__':
     main()
     get_login_param()
     # send_message()
-
