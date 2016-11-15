@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 '''
 Required
@@ -15,6 +15,8 @@ Update
 '''
 
 import requests
+import json
+
 try:
     import cookielib
 except:
@@ -22,11 +24,11 @@ except:
 import re
 import time
 import os.path
+
 try:
     from PIL import Image
 except:
     pass
-
 
 # 构造 Request headers
 agent = 'Mozilla/5.0 (Windows NT 5.1; rv:33.0) Gecko/20100101 Firefox/33.0'
@@ -57,20 +59,21 @@ def get_xsrf():
 
 # 获取验证码
 def get_captcha():
-    t = str(int(time.time()*1000))
+    t = str(int(time.time() * 1000))
     captcha_url = 'http://www.zhihu.com/captcha.gif?r=' + t + "&type=login"
     r = session.get(captcha_url, headers=headers)
-    with open('captcha.jpg', 'wb') as f:
+    pic_path = "captcha.jpg"
+    with open(pic_path, 'wb') as f:
         f.write(r.content)
-        f.close()
     # 用pillow 的 Image 显示验证码
     # 如果没有安装 pillow 到源代码所在的目录去找到验证码然后手动输入
     try:
-        im = Image.open('captcha.jpg')
-        im.show()
-        im.close()
+        # im = Image.open(pic_path)
+        # im.show()
+        # im.close()
+        os.system('call %s' % pic_path)  # 打开图片
     except:
-        print(u'请到 %s 目录找到captcha.jpg 手动输入' % os.path.abspath('captcha.jpg'))
+        print(u'请到 %s 目录找到captcha.jpg 手动输入' % os.path.abspath(pic_path))
     captcha = input("please input the captcha\n>")
     return captcha
 
@@ -78,12 +81,11 @@ def get_captcha():
 def isLogin():
     # 通过查看用户个人信息来判断是否已经登录
     url = "https://www.zhihu.com/settings/profile"
-    login_code = session.get(url,allow_redirects=False).status_code
+    login_code = session.get(url, allow_redirects=False).status_code
     if int(x=login_code) == 200:
         return True
     else:
         return False
-
 
 
 def login(secret, account):
@@ -110,15 +112,21 @@ def login(secret, account):
         # 不需要验证码直接登录成功
         login_page = session.post(post_url, data=postdata, headers=headers)
         login_code = login_page.text
-        print(login_page.status)
-        print(login_code)
+        # print(login_page.msg)
+        # print(login_code)
+        if json.loads(login_code)['r'] == 0:
+            print(json.loads(login_code)['msg'])
+            print(login_code)
+        else:
+            raise Exception
     except:
         # 需要输入验证码后才能登录成功
         postdata["captcha"] = get_captcha()
         login_page = session.post(post_url, data=postdata, headers=headers)
         login_code = eval(login_page.text)
-        print(login_code['msg'])
-    session.cookies.save()
+        print(str(login_code['msg']))
+        # session.cookies.save()
+
 
 try:
     input = raw_input
@@ -126,10 +134,22 @@ except:
     pass
 
 
+def get_person_index():
+    url = 'https://www.zhihu.com/people/lglcomcn'
+    re = session.get(url, headers=headers)
+    print re.content
+
+
+def test_session():
+    pass
+
+
 if __name__ == '__main__':
     if isLogin():
         print('您已经登录')
     else:
-        account = input('请输入你的用户名\n>  ')
-        secret = input("请输入你的密码\n>  ")
+        account = '18600958348'  # input('请输入你的用户名\n>  ')
+        secret = 'lglcomcn'  # input("请输入你的密码\n>  ")
         login(secret, account)
+
+    get_person_index()
