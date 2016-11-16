@@ -10,6 +10,9 @@ import cookielib  # cookie lib
 import time  # time module
 import sys
 import re
+import math
+import random
+from urllib import urlencode, unquote, quote
 
 uuid = ''  # 定义微信登陆请求中tip值
 imagesPath = os.getcwd() + '/weixin.jpg'  # 定义二维码图片路径，os.getcwd()获取当前路径
@@ -109,31 +112,47 @@ def get_login_param():
     request = urllib2.Request(url=url)
     response = urllib2.urlopen(request)
     data = response.read()
+    g_value['skey'] = data.split("<skey>")[1].split("</skey>")[0]
+    g_value['sid'] = data.split("<wxsid>")[1].split("</wxsid>")[0]
+    g_value['uin'] = data.split("<wxuin>")[1].split("</wxuin>")[0]
+    g_value['pass_ticket'] = unquote(data.split("<pass_ticket>")[1].split("</pass_ticket>")[0])
     print data
+
+
+def getDeviceID():
+    g_value['DeviceID'] = "e" + "".join([str(random.choice(range(10))) for i in range(15)])
 
 
 def send_message():
     url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsendmsg?lang=zh_CN'
     post_content = {
-                        "BaseRequest":
-                        {
-                            "Uin": 2987494401,
-                            "Sid": "j6EitZ2+zKn2m+CB",
-                            "Skey": "@crypt_d79b14d1_77d7544fc09630ea6d29f5e2b98fcfdc",
-                            "DeviceID": "e316042128889845"
-                        },
-                        "Msg":
-                        {
-                            "Type": 1,
-                            "Content": "s",
-                            "FromUserName": "@448c7de2807d6088e6bd93caaa25ca376e8e49939a3227128743408c5a999344",
-                            "ToUserName": "filehelper",
-                            "LocalID": "14791075084620093",
-                            "ClientMsgId": "14791075084620093"
-                        },
-                        "Scene": 0
-                    }
+        "BaseRequest":
+            {
+                "Uin": 2987494401,
+                "Sid": "j6EitZ2+zKn2m+CB",
+                "Skey": "@crypt_d79b14d1_77d7544fc09630ea6d29f5e2b98fcfdc",
+                "DeviceID": "e316042128889845"
+            },
+        "Msg":
+            {
+                "Type": 1,
+                "Content": "s",
+                "FromUserName": "@448c7de2807d6088e6bd93caaa25ca376e8e49939a3227128743408c5a999344",
+                "ToUserName": "filehelper",
+                "LocalID": "14791075084620093",
+                "ClientMsgId": "14791075084620093"
+            },
+        "Scene": 0
+    }
 
+def wx_init():
+    # TODO
+    # pass_ticket里面包含%2f %2b等url编码
+    url = "https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?r=%s&pass_ticket=%s" % (int(time.time()), quote(g_value['pass_ticket']))
+    request = urllib2.Request(url=url)
+    response = urllib2.urlopen(request)
+    data = response.read()
+    print data
 
 # 入口函数
 def main():
@@ -159,8 +178,10 @@ def main():
 
 
 if __name__ == '__main__':
+    getDeviceID()
     print'Welcome to use weixin personnal version'
     print'Please click Enter key to continue......'
     main()
     get_login_param()
+    wx_init()
     # send_message()
