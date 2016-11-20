@@ -12,12 +12,27 @@ import sys
 import re
 import math
 import random
+import requests
 from urllib import urlencode, unquote, quote
 
 uuid = ''  # 定义微信登陆请求中tip值
 imagesPath = os.getcwd() + '/weixin.jpg'  # 定义二维码图片路径，os.getcwd()获取当前路径
 
 g_value = {}
+
+# urlOpener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookielib.LWPCookieJar(filename='cookies')))
+agent = 'Mozilla/5.0 (Windows NT 5.1; rv:33.0) Gecko/20100101 Firefox/33.0'
+headers = {
+    'User-Agent': agent
+}
+
+# 使用登录cookie信息
+session = requests.session()
+session.cookies = cookielib.LWPCookieJar(filename='cookies')
+try:
+    session.cookies.load(ignore_discard=True)
+except:
+    print("Cookie 未能加载")
 
 
 def getUUID():  # get UUID
@@ -32,9 +47,12 @@ def getUUID():  # get UUID
     }
     # 用urllib2中的Request模块（有三个参数，url，data，）
     # 用urllib的urlencode()方法进行编码转换，转换后才能被网页识别
-    request = urllib2.Request(url=url, data=urllib.urlencode(values))
-    response = urllib2.urlopen(request)  # 打开实时请求request
-    data = response.read()  # 读出response的值
+    # request = urllib2.Request(url=url, data=urllib.urlencode(values))
+    # response = urlOpener.open(url, data=urllib.urlencode(values))
+    response = session.post(url, data=values, headers=headers)
+    # response = urllib2.urlopen(request)  # 打开实时请求request
+    # data = response.read()  # 读出response的值
+    data = response.content  # 读出response的值
 
     print data
     # 用正则表达式获取网页返回的实时值,\d为int类型，\S为非空白字符
@@ -59,12 +77,15 @@ def show2DimensionCode():
         '_': int(time.time())
     }
 
-    request = urllib2.Request(url=url, data=urllib.urlencode(values))
-    response = urllib2.urlopen(request)
+    # request = urllib2.Request(url=url, data=urllib.urlencode(values))
+    # response = urllib2.urlopen(request)
+    # response = urlOpener.open(url, data=urllib.urlencode(values))
+    response = session.post(url, data=values, headers = headers)
     tip = 1
 
     f = open(imagesPath, 'wb')  # 以二进制（b）打开二维码图片
-    f.write(response.read())  # 将response获取的值写入img文件中
+    # f.write(response.read())  # 将response获取的值写入img文件中
+    f.write(response.content)
     f.close()
     time.sleep(1)  # 延时1秒
     os.system('call %s' % imagesPath)  # 打开图片
@@ -76,9 +97,12 @@ def show2DimensionCode():
 def isLoginSucess():
     # 获取微信登陆请求地址,读取返回值
     url = 'https://login.wx.qq.com/cgi-bin/mmwebwx-bin/login?tip=%s&uuid=%s&_=%s' % (tip, uuid, int(time.time()))
-    request = urllib2.Request(url=url)
-    response = urllib2.urlopen(request)
-    data = response.read()
+    # request = urllib2.Request(url=url)
+    # response = urllib2.urlopen(request)
+    # response = urlOpener.open(url)
+    response = session.get(url,headers = headers)
+    # data = response.read()
+    data = response.content
     print data
     # data值为window.code=408，登陆失败;为window.code=201，登陆成功
     # 利用正则表达式获取登陆状态码
@@ -109,13 +133,16 @@ def get_login_param():
           "ticket=%s&" \
           "uuid=%s&lang=zh_CN&scan=%s&fun=new&version=v2" % (ticket, uuid, scan)
 
-    request = urllib2.Request(url=url)
-    response = urllib2.urlopen(request)
-    data = response.read()
+    # request = urllib2.Request(url=url)
+    # response = urlOpener.open(url)
+    response = session.get(url,headers = headers)
+    # response = urllib2.urlopen(request)
+    data = response.content
     g_value['skey'] = data.split("<skey>")[1].split("</skey>")[0]
     g_value['sid'] = data.split("<wxsid>")[1].split("</wxsid>")[0]
     g_value['uin'] = data.split("<wxuin>")[1].split("</wxuin>")[0]
-    g_value['pass_ticket'] = unquote(data.split("<pass_ticket>")[1].split("</pass_ticket>")[0])
+    # g_value['pass_ticket'] = unquote(data.split("<pass_ticket>")[1].split("</pass_ticket>")[0])
+    g_value['pass_ticket'] = data.split("<pass_ticket>")[1].split("</pass_ticket>")[0]
     print data
 
 
@@ -145,21 +172,41 @@ def send_message():
         "Scene": 0
     }
 
+
 def wx_init():
-    # TODO
+    _r = raw_input("_r")
+    # _r = get_r()
+    # _r = int(time.time())
+
     # pass_ticket里面包含%2f %2b等url编码
-    url = "https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?r=%s&pass_ticket=%s" % (int(time.time()), quote(g_value['pass_ticket']))
-    request = urllib2.Request(url=url)
-    response = urllib2.urlopen(request)
-    data = response.read()
+    # url = "https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?r=%s&pass_ticket=%s" % (~int(time.time()), quote(g_value['pass_ticket']))
+    url = "https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?r=%s&pass_ticket=%s" % (
+        _r, g_value['pass_ticket'])
+
+    values = {
+        'BaseRequest': {
+            'DeviceID': g_value['DeviceID'],
+            'Sid': g_value['sid'],
+            'Skey': g_value['skey'],
+            'Uin': g_value['uin']
+        }
+    }
+
+    # request = urllib2.Request(url=url, data=urllib.urlencode(values))
+    # request.add_header('ContentType', 'application/json; charset=UTF-8')
+    # response = urlOpener.open(url, data=urllib.urlencode(values))
+    response = session.post(url, data=values,headers = headers)
+    # response = urllib2.urlopen(request)
+    data = response.content
     print data
+
 
 # 入口函数
 def main():
     # 获取当前cookie
-    cj = cookielib.CookieJar()
-    cookie = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-    urllib2.install_opener(cookie)
+    # cj = cookielib.CookieJar()
+    # cookie = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
+    # urllib2.install_opener(cookie)
 
     # 判断是否成功获取uuid
     if getUUID() == False:
@@ -173,11 +220,32 @@ def main():
         pass
 
     # 判断登陆成功，删除二维码
-    os.remove(imagesPath)
+    # os.remove(imagesPath)
     print'Login successfully!'
 
 
+def get_r():
+    # from ctypes import *
+    # print c_int(10)
+    # print ~int(10)
+    # print  int('00001010', 2)
+    # print  ~int('00001010', 2)
+    # print  int('11110101', 2)
+    # print (int('10000000011001101000011001010100', 2)+0b1)
+    # print ~int('10000000011001101000011001010100', 2)
+    # print  int('101111111100110010111100110101011', 2)
+    # print bin(10)
+    # 1479622952532 : 2140764587
+    ori_shi = 1479622952532
+
+    print bin(ori_shi)
+    r = ~int(bin(ori_shi)[-32:], 2)
+
+    return ~int(bin(int(time.time() * 1000))[-32:], 2)
+
+
 if __name__ == '__main__':
+    get_r()
     getDeviceID()
     print'Welcome to use weixin personnal version'
     print'Please click Enter key to continue......'
