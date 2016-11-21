@@ -13,6 +13,7 @@ import re
 import math
 import random
 import requests
+import json
 from urllib import urlencode, unquote, quote
 
 uuid = ''  # 定义微信登陆请求中tip值
@@ -23,19 +24,24 @@ g_value = {}
 # 联系人
 g_contacts = []
 
+g_myself = {}
+
 # urlOpener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookielib.LWPCookieJar(filename='cookies')))
-agent = 'Mozilla/5.0 (Windows NT 5.1; rv:33.0) Gecko/20100101 Firefox/33.0'
+agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.109 Safari/537.36'
+# agent = 'Mozilla/5.0 (Windows NT 5.1; rv:33.0) Gecko/20100101 Firefox/33.0'
+
 headers = {
     'User-Agent': agent
 }
 
 # 使用登录cookie信息
 session = requests.session()
-session.cookies = cookielib.LWPCookieJar(filename='cookies')
-try:
-    session.cookies.load(ignore_discard=True)
-except:
-    print("Cookie 未能加载")
+# session.cookies = cookielib.LWPCookieJar(filename='cookies')
+session.cookies = cookielib.CookieJar()
+# try:
+#     session.cookies.load(ignore_discard=True)
+# except:
+#     print("Cookie 未能加载")
 
 
 def getUUID():  # get UUID
@@ -157,6 +163,12 @@ def getDeviceID():
 def send_message(name=None, msg='hello!'):
     url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsendmsg?lang=zh_CN'
 
+    nickName = None
+    for member in g_contacts:
+        if name == member['NickName']:
+            nickName = member['UserName']
+            break
+
     clientMsgId = str(int(time.time() * 1000)) + \
                   str(random.random())[:5].replace('.', '')
     post_content = {
@@ -171,14 +183,17 @@ def send_message(name=None, msg='hello!'):
             {
                 "Type": 1,
                 "Content": msg,
-                "FromUserName": "@448c7de2807d6088e6bd93caaa25ca376e8e49939a3227128743408c5a999344",
-                "ToUserName": "filehelper",
+                "FromUserName": g_myself['User']['UserName'],
+                # "ToUserName": "filehelper",
+                "ToUserName": nickName,
                 "LocalID": clientMsgId,
                 "ClientMsgId": clientMsgId
-            },
-        "Scene": 0
+            }
     }
 
+    response = session.post(url, data=json.dumps(post_content), headers=headers)
+    data = response.content
+    print data
 
 def wx_init():
     # _r = raw_input("_r")
@@ -190,29 +205,37 @@ def wx_init():
     # url = "https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?r=%s&lang=zh_CN&pass_ticket=%s" % (
     #     _r, g_value['pass_ticket'])
 
-    url = "https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?pass_ticket=%s&r=%s&skey=%s" % (
-        g_value['pass_ticket'], _r, g_value['skey'],)
+    url = "https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?pass_ticket=%s&skey=%s&r=%s" % (
+        g_value['pass_ticket'], g_value['skey'], _r)
 
     values = {
         'BaseRequest': {
-            'Uin': g_value['uin'],
-            'DeviceID': g_value['DeviceID'],
+            'Uin': int(g_value['uin']),
             'Sid': g_value['sid'],
-            'Skey': g_value['skey']
+            'Skey': g_value['skey'],
+            'DeviceID': g_value['DeviceID']
         }
     }
 
-    # request = urllib2.Request(url=url, data=urllib.urlencode(values))
-    # request.add_header('ContentType', 'application/json; charset=UTF-8')
-    # response = urlOpener.open(url, data=urllib.urlencode(values))
-    agent = 'Mozilla/5.0 (Windows NT 5.1; rv:33.0) Gecko/20100101 Firefox/33.0'
+    agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.109 Safari/537.36'
     headers = {
         'User-Agent': agent,
-        'Content-Type': 'application/json;charset=UTF-8'
+        'ContentType': 'application/json;charset=UTF-8'
+
     }
-    response = session.post(url, data=values, headers=headers)
-    # response = urllib2.urlopen(request)
+    response = session.post(url, data=json.dumps(values), headers=headers)
     data = response.content
+
+    # request = urllib2.Request(url=url, data=json.dumps(values))
+    # request.add_header('ContentType', 'application/json; charset=UTF-8')
+
+    # urlOpener = urllib2.build_opener(urllib2.HTTPCookieProcessor(session.cookies))
+    # response = urlOpener.open(request)
+    # data = response.read()
+    data = json.loads(data)
+    g_myself['SyncKey'] = data['SyncKey']
+    g_myself['User'] = data['User']
+
     print data
 
 
@@ -223,6 +246,9 @@ def get_connect():
     response = session.post(url, data={}, headers=headers)
     # response = urllib2.urlopen(request)
     data = response.content
+    data = json.loads(data)
+    global g_contacts
+    g_contacts = data['MemberList']
     print data
 
 
@@ -278,4 +304,5 @@ if __name__ == '__main__':
     get_login_param()
     wx_init()
     get_connect()
-    send_message()
+    for i in range(10):
+        send_message(u'刘颖')
