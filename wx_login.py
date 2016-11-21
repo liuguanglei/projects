@@ -18,7 +18,10 @@ from urllib import urlencode, unquote, quote
 uuid = ''  # 定义微信登陆请求中tip值
 imagesPath = os.getcwd() + '/weixin.jpg'  # 定义二维码图片路径，os.getcwd()获取当前路径
 
+# 用于登录的全局参数
 g_value = {}
+# 联系人
+g_contacts = []
 
 # urlOpener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookielib.LWPCookieJar(filename='cookies')))
 agent = 'Mozilla/5.0 (Windows NT 5.1; rv:33.0) Gecko/20100101 Firefox/33.0'
@@ -80,7 +83,7 @@ def show2DimensionCode():
     # request = urllib2.Request(url=url, data=urllib.urlencode(values))
     # response = urllib2.urlopen(request)
     # response = urlOpener.open(url, data=urllib.urlencode(values))
-    response = session.post(url, data=values, headers = headers)
+    response = session.post(url, data=values, headers=headers)
     tip = 1
 
     f = open(imagesPath, 'wb')  # 以二进制（b）打开二维码图片
@@ -100,7 +103,7 @@ def isLoginSucess():
     # request = urllib2.Request(url=url)
     # response = urllib2.urlopen(request)
     # response = urlOpener.open(url)
-    response = session.get(url,headers = headers)
+    response = session.get(url, headers=headers)
     # data = response.read()
     data = response.content
     print data
@@ -135,7 +138,8 @@ def get_login_param():
 
     # request = urllib2.Request(url=url)
     # response = urlOpener.open(url)
-    response = session.get(url,headers = headers)
+
+    response = session.get(url, headers=headers)
     # response = urllib2.urlopen(request)
     data = response.content
     g_value['skey'] = data.split("<skey>")[1].split("</skey>")[0]
@@ -150,52 +154,73 @@ def getDeviceID():
     g_value['DeviceID'] = "e" + "".join([str(random.choice(range(10))) for i in range(15)])
 
 
-def send_message():
+def send_message(name=None, msg='hello!'):
     url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsendmsg?lang=zh_CN'
+
+    clientMsgId = str(int(time.time() * 1000)) + \
+                  str(random.random())[:5].replace('.', '')
     post_content = {
         "BaseRequest":
             {
-                "Uin": 2987494401,
-                "Sid": "j6EitZ2+zKn2m+CB",
-                "Skey": "@crypt_d79b14d1_77d7544fc09630ea6d29f5e2b98fcfdc",
-                "DeviceID": "e316042128889845"
+                "Uin": g_value['uin'],
+                "Sid": g_value['sid'],
+                "Skey": g_value['skey'],
+                "DeviceID": g_value['DeviceID']
             },
         "Msg":
             {
                 "Type": 1,
-                "Content": "s",
+                "Content": msg,
                 "FromUserName": "@448c7de2807d6088e6bd93caaa25ca376e8e49939a3227128743408c5a999344",
                 "ToUserName": "filehelper",
-                "LocalID": "14791075084620093",
-                "ClientMsgId": "14791075084620093"
+                "LocalID": clientMsgId,
+                "ClientMsgId": clientMsgId
             },
         "Scene": 0
     }
 
 
 def wx_init():
-    _r = raw_input("_r")
+    # _r = raw_input("_r")
     # _r = get_r()
-    # _r = int(time.time())
+    _r = int(time.time())
 
     # pass_ticket里面包含%2f %2b等url编码
     # url = "https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?r=%s&pass_ticket=%s" % (~int(time.time()), quote(g_value['pass_ticket']))
-    url = "https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?r=%s&pass_ticket=%s" % (
-        _r, g_value['pass_ticket'])
+    # url = "https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?r=%s&lang=zh_CN&pass_ticket=%s" % (
+    #     _r, g_value['pass_ticket'])
+
+    url = "https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxinit?pass_ticket=%s&r=%s&skey=%s" % (
+        g_value['pass_ticket'], _r, g_value['skey'],)
 
     values = {
         'BaseRequest': {
+            'Uin': g_value['uin'],
             'DeviceID': g_value['DeviceID'],
             'Sid': g_value['sid'],
-            'Skey': g_value['skey'],
-            'Uin': g_value['uin']
+            'Skey': g_value['skey']
         }
     }
 
     # request = urllib2.Request(url=url, data=urllib.urlencode(values))
     # request.add_header('ContentType', 'application/json; charset=UTF-8')
     # response = urlOpener.open(url, data=urllib.urlencode(values))
-    response = session.post(url, data=values,headers = headers)
+    agent = 'Mozilla/5.0 (Windows NT 5.1; rv:33.0) Gecko/20100101 Firefox/33.0'
+    headers = {
+        'User-Agent': agent,
+        'Content-Type': 'application/json;charset=UTF-8'
+    }
+    response = session.post(url, data=values, headers=headers)
+    # response = urllib2.urlopen(request)
+    data = response.content
+    print data
+
+
+def get_connect():
+    url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin' + '/webwxgetcontact?pass_ticket=%s&skey=%s&r=%s' % (
+        g_value['pass_ticket'], g_value['skey'], int(time.time()))
+
+    response = session.post(url, data={}, headers=headers)
     # response = urllib2.urlopen(request)
     data = response.content
     print data
@@ -245,11 +270,12 @@ def get_r():
 
 
 if __name__ == '__main__':
-    get_r()
+    # get_r()
     getDeviceID()
     print'Welcome to use weixin personnal version'
     print'Please click Enter key to continue......'
     main()
     get_login_param()
     wx_init()
-    # send_message()
+    get_connect()
+    send_message()
