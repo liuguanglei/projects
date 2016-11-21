@@ -24,6 +24,8 @@ g_value = {}
 # 联系人
 g_contacts = []
 
+g_current_dialog = []
+
 g_myself = {}
 
 # urlOpener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookielib.LWPCookieJar(filename='cookies')))
@@ -38,6 +40,8 @@ headers = {
 session = requests.session()
 # session.cookies = cookielib.LWPCookieJar(filename='cookies')
 session.cookies = cookielib.CookieJar()
+
+
 # try:
 #     session.cookies.load(ignore_discard=True)
 # except:
@@ -160,10 +164,10 @@ def getDeviceID():
     g_value['DeviceID'] = "e" + "".join([str(random.choice(range(10))) for i in range(15)])
 
 
-def send_message(name=None, msg='hello!'):
+def send_message(name='filehelper', msg='hello!'):
     url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsendmsg?lang=zh_CN'
 
-    nickName = None
+    nickName = 'filehelper'
     for member in g_contacts:
         if name == member['NickName']:
             nickName = member['UserName']
@@ -191,9 +195,11 @@ def send_message(name=None, msg='hello!'):
             }
     }
 
-    response = session.post(url, data=json.dumps(post_content), headers=headers)
+    response = session.post(url, data=json.dumps(post_content, ensure_ascii=False).encode('utf8'), headers=headers)
     data = response.content
     print data
+    time.sleep(0.3)
+
 
 def wx_init():
     # _r = raw_input("_r")
@@ -235,6 +241,9 @@ def wx_init():
     data = json.loads(data)
     g_myself['SyncKey'] = data['SyncKey']
     g_myself['User'] = data['User']
+
+    # global g_current_dialog
+    # g_current_dialog =
 
     print data
 
@@ -304,5 +313,5 @@ if __name__ == '__main__':
     get_login_param()
     wx_init()
     get_connect()
-    for i in range(10):
-        send_message(u'刘颖')
+    for i in range(500):
+        send_message('filehelper', str(i) + u' 只羊')
