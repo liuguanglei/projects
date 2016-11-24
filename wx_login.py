@@ -28,6 +28,9 @@ g_current_dialog = []
 
 g_myself = {}
 
+g_special_users = ['newsapp', 'fmessage', 'filehelper', 'weibo', 'qqmail', 'fmessage', 'tmessage', 'qmessage', 'qqsync', 'floatbottle', 'lbsapp', 'shakeapp', 'medianote', 'qqfriend', 'readerapp', 'blogapp', 'facebookapp', 'masssendapp', 'meishiapp', 'feedsapp',
+                             'voip', 'blogappweixin', 'weixin', 'brandsessionholder', 'weixinreminder', 'wxid_novlwrv3lqwv11', 'gh_22b87fa7cb3c', 'officialaccounts', 'notification_messages', 'wxid_novlwrv3lqwv11', 'gh_22b87fa7cb3c', 'wxitil', 'userexperience_alarm', 'notification_messages']
+
 # urlOpener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cookielib.LWPCookieJar(filename='cookies')))
 agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.109 Safari/537.36'
 # agent = 'Mozilla/5.0 (Windows NT 5.1; rv:33.0) Gecko/20100101 Firefox/33.0'
@@ -164,14 +167,20 @@ def getDeviceID():
     g_value['DeviceID'] = "e" + "".join([str(random.choice(range(10))) for i in range(15)])
 
 
-def send_message(name='filehelper', msg='hello!'):
+def send_message(type='p', name='filehelper', msg='hello!', interval=0.5):
     url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsendmsg?lang=zh_CN'
 
-    nickName = 'filehelper'
+    to = 'filehelper'
+
     for member in g_contacts:
-        if name == member['NickName']:
-            nickName = member['UserName']
-            break
+        if type == 'p':
+            if name == member['RemarkName']:
+                to = member['UserName']
+                break
+        elif type == 'g':
+            if name == member['NickName']:
+                to = member['UserName']
+                break
 
     clientMsgId = str(int(time.time() * 1000)) + \
                   str(random.random())[:5].replace('.', '')
@@ -189,7 +198,7 @@ def send_message(name='filehelper', msg='hello!'):
                 "Content": msg,
                 "FromUserName": g_myself['User']['UserName'],
                 # "ToUserName": "filehelper",
-                "ToUserName": nickName,
+                "ToUserName": to,
                 "LocalID": clientMsgId,
                 "ClientMsgId": clientMsgId
             }
@@ -198,7 +207,7 @@ def send_message(name='filehelper', msg='hello!'):
     response = session.post(url, data=json.dumps(post_content, ensure_ascii=False).encode('utf8'), headers=headers)
     data = response.content
     print data
-    time.sleep(0.3)
+    time.sleep(interval)
 
 
 def wx_init():
@@ -247,19 +256,42 @@ def wx_init():
 
     print data
 
-
 def get_connect():
+    global g_special_users
+    SpecialUsers = g_special_users
     url = 'https://wx.qq.com/cgi-bin/mmwebwx-bin' + '/webwxgetcontact?pass_ticket=%s&skey=%s&r=%s' % (
         g_value['pass_ticket'], g_value['skey'], int(time.time()))
 
     response = session.post(url, data={}, headers=headers)
     # response = urllib2.urlopen(request)
     data = response.content
-    data = json.loads(data)
-    global g_contacts
-    g_contacts = data['MemberList']
-    print data
+    dic = json.loads(data)
 
+    MemberCount = dic['MemberCount']
+    MemberList = dic['MemberList']
+
+    global g_contacts
+    g_contacts = MemberList
+
+    ContactList = MemberList[:]
+    GroupList = []
+    PublicUsersList = []
+    SpecialUsersList = []
+
+    for Contact in ContactList:
+        if Contact['VerifyFlag'] & 8 != 0:  # 公众号/服务号
+            ContactList.remove(Contact)
+            PublicUsersList.append(Contact)
+        elif Contact['UserName'] in SpecialUsers:  # 特殊账号
+            ContactList.remove(Contact)
+            SpecialUsersList.append(Contact)
+        elif '@@' in Contact['UserName']:  # 群聊
+            ContactList.remove(Contact)
+            GroupList.append(Contact)
+    print PublicUsersList
+    print SpecialUsers
+    print GroupList
+    pass
 
 # 入口函数
 def main():
@@ -313,5 +345,5 @@ if __name__ == '__main__':
     get_login_param()
     wx_init()
     get_connect()
-    for i in range(500):
-        send_message('filehelper', str(i) + u' 只羊')
+    for i in range(200):
+        send_message(type='g', name=u'北京交通广播', msg=u'盛博，能看到我说话么!  ' + str(i),interval=0.5)
