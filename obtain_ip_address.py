@@ -37,6 +37,17 @@ def get_address1(ip):
     ip_addr[ip] = addr
 
 
+def export_ip(ips):
+    path_ip = "c:\\temp\\ip.json"
+    str_ips = json.dumps(ips, ensure_ascii=False)
+    with open(path_ip, "wb") as f:
+        f.write(str_ips.encode("utf-8"))
+
+    with open(path_ip, "rb") as f:
+        str_in = f.read()
+        print str_in
+        print json.loads(str_in)
+
 def get_ip_from_json():
     path = "c:\\temp\\111111.json"
     json_str = ""
@@ -51,7 +62,8 @@ def get_ip_from_json():
         if ip not in ips:
             ips.append(ip)
 
-    ips = ["201.247.40.134"]
+    # ips = ["201.247.40.134"]
+    # export_ip(ips)
 
     size = 3
     pool = ThreadPool(size)
@@ -88,6 +100,6 @@ def get_ip_muti_thread():
 
 
 if __name__ == '__main__':
-    # get_ip_from_json()
+    get_ip_from_json()
     ip = "202.101.201.101"
     get_address(ip)
