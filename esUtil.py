@@ -3,7 +3,6 @@ import json
 
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import scan
-from django.conf import settings
 
 
 class ES(object):
@@ -11,10 +10,6 @@ class ES(object):
     获取ES查询链接，并提供基本查询和统计方法
     '''
     es = None
-
-    def __init__(self):
-        if not self.es:
-            self.init(settings.ELASTICSEARCH['host'], settings.ELASTICSEARCH['port'])
 
     @staticmethod
     def init(host, port):
@@ -57,6 +52,20 @@ class ES(object):
         else:
             return None
 
+    def update(self, index, doc_type, id, body):
+        re = None
+        try:
+            re = self.es.get(index=index, doc_type=doc_type, id=id)['_source']
+        except:
+            return False
+        if re:
+            for key, value in body.iteritems():
+                re[key] = value
+            self.es.index(index=index, doc_type=doc_type, id=id, body=re)
+            return True
+        else:
+            return False
+
     def bulk(self, index, doc_type, body):
         result = self.es.bulk(index=index, doc_type=doc_type, body=body)
         if result:
@@ -72,3 +81,15 @@ class ES(object):
                                     _source_exclude=_source_exclude,
                                     _source_include=_source_include, request_timeout=request_timeout)
             return json.loads(json.dumps(result))
+
+
+if __name__ == '__main__':
+    es = ES()
+    es.init("192.168.20.110", 9200)
+
+    _id1 = "AVjd46X0ZaOtNJpg52mf"
+    _id = "AVjd46H-ZaOtNJpg52mc"
+    body = {'handleStatus':1, 'handleMsg':'msgmsg'}
+    body1 = {'handleStatus':2, 'handleMsg':'msgmsg'}
+    print es.update(index='web_events_index_2016.12.08', doc_type='events_doc', id=_id, body=body)
+    print es.update(index='web_events_index_2016.12.08', doc_type='events_doc', id=_id1, body=body1)
