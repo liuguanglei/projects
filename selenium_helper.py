@@ -5,7 +5,8 @@ from selenium import webdriver
 
 
 def test():
-    driver = webdriver.Chrome(r"C:\lgl\software\chromedriver_win32\chromedriver.exe")
+    # driver = webdriver.Chrome(r"C:\lgl\software\chromedriver_win32\chromedriver.exe")
+    driver = webdriver.Chrome(r"/Users/liuguanglei/Downloads/chromedriver")
     driver.get("http://www.so.com")
     # assert "360搜索".decode('utf-8') in driver.title
 
@@ -19,8 +20,9 @@ def test():
 
 
 def jdLogin():
-    driver = webdriver.Chrome(r"C:\lgl\software\chromedriver_win32\chromedriver.exe")
-    driver.set_window_size(200, 200)
+    # driver = webdriver.Chrome(r"C:\lgl\software\chromedriver_win32\chromedriver.exe")
+    driver = webdriver.Chrome(r"/Users/liuguanglei/Downloads/chromedriver")
+    # driver.set_window_size(200, 200)
 
     driver.get("https://passport.jd.com/new/login.aspx")
     driver.find_element_by_class_name("login-tab-r").click()
@@ -39,10 +41,22 @@ def jdLogin():
     time.sleep(2)
 
     driver.find_element_by_xpath(
-        "//ul[@class='seckill_mod_goodslist clearfix']/li[2]/div[@class='seckill_mod_goods_info']/a").click()
+        "//ul[@class='seckill_mod_goodslist clearfix']/li[1]/div[@class='seckill_mod_goods_info']/a").click()
     time.sleep(2)
 
-    driver.find_element_by_id("InitCartUrl").click()
+    for handle in driver.window_handles:
+        driver.switch_to_window(handle)
+    try:
+        driver.find_elements_by_id("InitCartUrl")[0].click()
+        time.sleep(2)
+    except:
+        pass
+    driver.get("https://cart.jd.com/cart.action")
+    time.sleep(2)
+    driver.find_elements_by_class_name("submit-btn")[0].click()
+
+    time.sleep(2)
+    driver.find_element_by_id("order-submit").click()
 
     time.sleep(100)
 
