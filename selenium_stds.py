@@ -8,9 +8,11 @@ from selenium import *
 
 
 def show_all():
+    sleep_time = 5
+
     driver = webdriver.Chrome(r"C:\lgl\software\chromedriver_win32\chromedriver.exe")
-    # driver.get("http://192.168.20.111/")
-    driver.get("http://127.0.0.1:8000/")
+    driver.get("http://192.168.20.113/")
+    # driver.get("http://127.0.0.1:8000/")
 
     print "please input username"
     # input_name = raw_input()
@@ -21,11 +23,11 @@ def show_all():
     # input_pwd = raw_input()
     input_pwd = "admin@1234"
     driver.find_element_by_id("login-pass").send_keys(input_pwd)
-    time.sleep(3)
+    time.sleep(sleep_time)
 
     driver.find_element_by_id("login-button").click()
 
-    time.sleep(3)
+    time.sleep(sleep_time)
     driver.find_element_by_class_name("sidebar-minify-btn").click()
     driver.find_element_by_id("full-screen").click()
 
@@ -33,15 +35,15 @@ def show_all():
 
     def view():
         for n, li in enumerate(liList):
-            if n < 4:
-                continue
+            # if n < 4:
+            #     continue
             ll = li.find_elements_by_xpath("ul/li")
             li.click()
-            time.sleep(3)
+            time.sleep(sleep_time)
             if len(ll) > 0:
                 for l in ll:
                     l.click()
-                    time.sleep(3)
+                    time.sleep(sleep_time)
 
     for i in range(5):
         view()
