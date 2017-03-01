@@ -12,8 +12,39 @@ def test():
     driver.find_element_by_id("input").send_keys("python")
     driver.find_element_by_id("search-button").click()
 
+    driver.get("http://www.baidu.com")
     # print driver.title
     # driver.close()
+    time.sleep(100)
+
+
+def jdLogin():
+    driver = webdriver.Chrome(r"C:\lgl\software\chromedriver_win32\chromedriver.exe")
+    driver.set_window_size(200, 200)
+
+    driver.get("https://passport.jd.com/new/login.aspx")
+    driver.find_element_by_class_name("login-tab-r").click()
+    print "please input username"
+    # input_name = raw_input()
+    input_name = "lglcomcn"
+    driver.find_element_by_id("loginname").send_keys(input_name)
+    print "please input password"
+    # input_pwd = raw_input()
+    input_pwd = "lgl123forfun"
+    driver.find_element_by_id("nloginpwd").send_keys(input_pwd)
+    driver.find_element_by_id("loginsubmit").click()
+    time.sleep(2)
+
+    driver.get("https://miaosha.jd.com")
+    time.sleep(2)
+
+    driver.find_element_by_xpath(
+        "//ul[@class='seckill_mod_goodslist clearfix']/li[2]/div[@class='seckill_mod_goods_info']/a").click()
+    time.sleep(2)
+
+    driver.find_element_by_id("InitCartUrl").click()
+
+    time.sleep(100)
 
 
 import thread
@@ -51,4 +82,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    # test()
+    jdLogin()
