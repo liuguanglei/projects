@@ -26,11 +26,11 @@ def jdLogin():
     driver.find_element_by_class_name("login-tab-r").click()
     print "please input username"
     # input_name = raw_input()
-    input_name = "lglcomcn"
+    input_name = "xxx"
     driver.find_element_by_id("loginname").send_keys(input_name)
     print "please input password"
     # input_pwd = raw_input()
-    input_pwd = "lgl123forfun"
+    input_pwd = "xxx"
     driver.find_element_by_id("nloginpwd").send_keys(input_pwd)
     driver.find_element_by_id("loginsubmit").click()
     time.sleep(2)
