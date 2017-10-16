@@ -7,6 +7,8 @@ import Queue
 import traceback
 import thread
 import os
+import socket
+import struct
 
 import threading
 from BeautifulSoup import BeautifulSoup
@@ -186,6 +188,7 @@ def get_address(ip=None, proxy=None):
             proxy = get_proxy()
         # print "begin request d ip:{ip},proxy:{proxy}".format(ip=ip, proxy=proxy)
         res = requests.get(url, proxies={"http": proxy})
+
         if res.status_code != 200:
             error_handle(ip, proxy)
             return
@@ -222,6 +225,7 @@ def get_address(ip=None, proxy=None):
     except IndexError, e:
         print "IndexError d ip:{ip},proxy:{proxy}".format(ip=ip, proxy=proxy)
         error_handle(ip, proxy)
+        back_proxy(proxy)
     except Exception, e:
         print traceback.format_exc()
         error_handle(ip, proxy)
@@ -375,7 +379,7 @@ def main():
             global_total, global_file_count, global_count = int(ll[0]), int(ll[1]), int(ll[2])
 
     init_proxy()
-    thread_num = 85
+    thread_num = 100
     for i in range(thread_num):
         threading.Thread(target=get_ip_run).start()
 
