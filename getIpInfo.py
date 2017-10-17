@@ -9,6 +9,8 @@ import thread
 import os
 import socket
 import struct
+import re
+import chardet
 
 import threading
 from BeautifulSoup import BeautifulSoup
@@ -132,7 +134,7 @@ def write_file(content, path=None):
         if path is None:
             path = path_root + "/result/ip_info_{count}.txt".format(count=str(global_file_count))
     with open(path, 'a') as f:
-        f.write(content.encode("utf8") + "\n")
+        f.write(content + "\n")
 
     path_1 = path_root + "/ip_count_flag.txt"
     with open(path_1, "w") as f:
@@ -193,28 +195,38 @@ def get_address(ip=None, proxy=None):
             error_handle(ip, proxy)
             return
         html = res.content
-        soup = BeautifulSoup(html)
         target = ""
-        result_ll = soup.findAll("div", {"class": "well"})
-        if len(result_ll) == 0:
-            # 比较有可能是代理被封的情况,因此把代理移除
-            error_handle(ip, proxy)
-            remove_proxy(proxy)
-            return
+        dammit = chardet.detect(html)["encoding"]
+        if dammit.lower() != "UTF-8".lower():
+            # 针对乱码的情况，通过正则解析
+            target = get_info_from_html(html)
+            if target == "":
+                # 解析错误的情况
+                error_handle(ip, proxy)
+                return
         else:
-            target1 = result_ll[0]
-        for index, c in enumerate(target1):
-            if index == 1:
-                target += c.text.split(u"：")[1]
-            elif c.text.find("GeoIP") > -1:
-                ll = c.text.split(":")[1].split(",")
-                target = target + "," + " ".join([s.split()[0] for s in ll])
-                continue
-            elif index == 3 and c.text.find("GeoIP") == -1:
-                target = target + "," + c.text
-            elif index == 4:
-                target = target + "," + c.text
-        target = ip + "," + target
+            soup = BeautifulSoup(html)
+            result_ll = soup.findAll("div", {"class": "well"})
+            if len(result_ll) == 0:
+                # 比较有可能是代理被封的情况,因此把代理移除
+                error_handle(ip, proxy)
+                remove_proxy(proxy)
+                return
+            else:
+                target1 = result_ll[0]
+            for index, c in enumerate(target1):
+                if index == 1:
+                    target += c.text.split(u"：")[1]
+                elif c.text.find("GeoIP") > -1:
+                    ll = c.text.split(":")[1].split(",")
+                    target = target + "," + " ".join([s.split()[0] for s in ll])
+                    continue
+                elif index == 3 and c.text.find("GeoIP") == -1:
+                    target = target + "," + c.text
+                elif index == 4:
+                    target = target + "," + c.text
+            target = ip + "," + target
+            target = target.encode("utf8")
         write_file(target)
         back_proxy(proxy)
         # print target
@@ -365,6 +377,34 @@ def filter_proxy():
         requests_pool = makeRequests(is_proxy_available, [([l[0], l[1]], None) for l in ll])
         [pool.putRequest(req) for req in requests_pool]
         pool.wait()
+
+
+def get_info_from_html(html):
+    pattern = re.compile(r'<div class="well">.*?</div>')
+    match = pattern.search(html)
+    if match:
+        tmp = match.group()
+        p1 = re.compile(r'<p>.*?</p>')
+        ll = p1.findall(tmp)
+        target = ""
+        for index, l in enumerate(ll):
+            t = l.replace('<p>', '').replace('</p>', '').replace('<code>', '').replace('</code>', '')
+            if index == 0:
+                target += t.split("：")[1].strip()
+            if index == 1:
+                t = t = t.decode("utf-8").encode("utf-8")
+                target += "," + t.split("：")[1].strip()
+                # print chardet.detect(target)
+            if index == 2:
+                t = t.decode("ISO-8859-1").encode("utf-8")
+                ll = t.split(":")[1].strip().split(",")
+                target += "," + " ".join([s.split()[0] for s in ll])
+            if index == 3:
+                target += "," + t.strip()
+        return target
+    else:
+        print "get_info_from_html return empyt string"
+        return ""
 
 
 def main():

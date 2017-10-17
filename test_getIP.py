@@ -23,34 +23,43 @@ def get_address(ip=None, proxy=None):
             return
         html = res.content
 
-        import urllib2
-        response = urllib2.urlopen(url)
-        html = response.read()
+        # import urllib2
+        # headers = {'Connection': 'keep-alive',
+        #            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        #            'X-Requested-With': 'XMLHttpRequest',
+        #            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36',
+        #            'Accept-Encoding': 'gzip, deflate',
+        #            'Accept-Language': 'en-GB,en;q=0.8,zh-CN;q=0.6,zh;q=0.4'
+        #            }
+        # request = urllib2.Request(url, headers=headers)
+        # response = urllib2.urlopen(request)
+        # html = response.read()
 
-        with open("c://test_xxx.txt", "w") as f:
-            f.write(html)
-        dammit = UnicodeDammit(html)
-        print dammit.original_encoding
-        print chardet.detect(html)
-        tmp = html.decode("UTF-8")
-        tmp1 = tmp.encode("utf-8")
-        soup = BeautifulSoup(html, fromEncoding=dammit.original_encoding)
-        target = ""
-        target1 = soup.findAll("div", {"class": "well"})[0]
-        for index, c in enumerate(target1):
-            if index == 1:
-                # print "chardet:" + chardet.detect(c.text)
-                target += c.text.split(u"：")[1]
-            elif c.text.find("GeoIP") > -1:
-                ll = c.text.split(":")[1].split(",")
-                target = target + "," + " ".join([s.split()[0] for s in ll])
-                continue
-            elif index == 3 and c.text.find("GeoIP") == -1:
-                target = target + "," + c.text
-            elif index == 4:
-                target = target + "," + c.text
-        target = ip + "," + target
-        print target
+        dammit = chardet.detect(html)["encoding"]
+        if dammit.lower() != "UTF-8".lower():
+            target = get_info_from_html(html)
+            # print target
+            # with open("c:/ttt.txt", "w") as f:
+            #     f.write(target.decode())
+        else:
+            soup = BeautifulSoup(html, fromEncoding="ISO-8859-1")
+            target = ""
+            target1 = soup.findAll("div", {"class": "well"})[0]
+            for index, c in enumerate(target1):
+                if index == 1:
+                    # print "chardet:" + chardet.detect(c.text)
+                    target += c.text.split(u"：")[1]
+                elif c.text.find("GeoIP") > -1:
+                    ll = c.text.split(":")[1].split(",")
+                    target = target + "," + " ".join([s.split()[0] for s in ll])
+                    continue
+                elif index == 3 and c.text.find("GeoIP") == -1:
+                    target = target + "," + c.text
+                elif index == 4:
+                    target = target + "," + c.text
+            target = ip + "," + target
+
+            print target
     except requests.exceptions.ProxyError, e:
         print traceback.format_exc()
     except IndexError, e:
@@ -174,12 +183,44 @@ def get_ip_from_file():
                 yield line
 
 
+import re
+
+
+def get_info_from_html(html):
+    pattern = re.compile(r'<div class="well">.*?</div>')
+    match = pattern.search(html)
+    if match:
+        tmp = match.group()
+        p1 = re.compile(r'<p>.*?</p>')
+        ll = p1.findall(tmp)
+        target = ""
+        for index, l in enumerate(ll):
+            t = l.replace('<p>', '').replace('</p>', '').replace('<code>', '').replace('</code>', '')
+            if index == 0:
+                target += t.split("：")[1].strip()
+            if index == 1:
+                t = t = t.decode("utf-8").encode("utf-8")
+                target += "," + t.split("：")[1].strip()#.decode().encode("utf8")
+                print chardet.detect(target)
+            if index == 2:
+                t = t.decode("ISO-8859-1").encode("utf-8")
+                ll = t.split(":")[1].strip().split(",")
+                target += "," + " ".join([s.split()[0] for s in ll])
+            if index == 3:
+                target += "," + t.strip()
+        return target
+    else:
+        return ""
+
+
 if __name__ == '__main__':
+    # str = u'<div id="result"><div class="well"><p>您查询的 IP：<code>47.71.10.0</code></p><p>所在地理位置：<code>德国 </code></p><p>GeoIP: V�hl, Hessen, Germany</p><p>Vodafone D2 GmbH</p></div></div></div>sss</div>'
+    # print get_info_from_html(str)
     ip = "47.71.10.0"
     # ip = "111.198.57.237"
-    dammit = UnicodeDammit(ip)
-    print dammit.original_encoding
-    tmp = ip.decode(dammit.original_encoding)
+    # dammit = UnicodeDammit(ip)
+    # print dammit.original_encoding
+    # tmp = ip.decode(dammit.original_encoding)
     # print convet_int2Ip(3756722688)
     # print convert_ip2Int("223.235.10.0")
     # print convert_ip2Int(ip)
@@ -194,4 +235,4 @@ if __name__ == '__main__':
 
     proxy = "http://111.13.7.119:80"
     get_address(ip, proxy)
-    time.sleep(10)
+    # time.sleep(10)
