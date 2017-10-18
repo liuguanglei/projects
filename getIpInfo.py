@@ -35,12 +35,14 @@ def get_thread_lock():
 
 
 def init_proxy():
+    global proxy_free
     path = path_root + "/proxy.txt"
     with open(path, "r") as f:
         lines = f.readlines()
         for l in lines:
             if len(l.split()) == 2:
                 proxy_free.append("http://{ip}:{port}".format(ip=l.split()[0], port=l.split()[1]))
+    proxy_free = proxy_free * 8
 
 
 lock3 = get_thread_lock()
@@ -419,7 +421,7 @@ def main():
             global_total, global_file_count, global_count = int(ll[0]), int(ll[1]), int(ll[2])
 
     init_proxy()
-    thread_num = 100
+    thread_num = 400
     for i in range(thread_num):
         threading.Thread(target=get_ip_run).start()
 

@@ -6,10 +6,19 @@ import traceback
 import chardet
 import socket
 import struct
+import datetime
 
 from BeautifulSoup import BeautifulSoup
 from bs4 import UnicodeDammit
 
+def elapse(func):
+    def deco(*args, **kwargs):
+        starttime = datetime.datetime.now()
+        func(*args, **kwargs)
+        endtime = datetime.datetime.now()
+        print "elapse time: " + str((endtime - starttime).seconds) + " seconds"
+
+    return deco
 
 # from bs4 import UnicodeDammit
 
@@ -185,6 +194,8 @@ def get_ip_from_file():
 
 import re
 
+import threading
+
 
 def get_info_from_html(html):
     pattern = re.compile(r'<div class="well">.*?</div>')
@@ -200,7 +211,7 @@ def get_info_from_html(html):
                 target += t.split("：")[1].strip()
             if index == 1:
                 t = t = t.decode("utf-8").encode("utf-8")
-                target += "," + t.split("：")[1].strip()#.decode().encode("utf8")
+                target += "," + t.split("：")[1].strip()  # .decode().encode("utf8")
                 print chardet.detect(target)
             if index == 2:
                 t = t.decode("ISO-8859-1").encode("utf-8")
@@ -211,6 +222,74 @@ def get_info_from_html(html):
         return target
     else:
         return ""
+
+
+lock10 = threading.RLock()
+
+
+def write_proxy_txt(proxy_ip):
+    path = path_root + "/proxy.txt"
+    lock10.acquire()
+    with open(path, "a") as f:
+        f.write(proxy_ip)
+    lock10.release()
+
+
+def is_proxy_available(ip, port):
+    try:
+        proxy = {"http": "http://{ip}:{port}".format(ip=ip, port=port)}
+        url = "http://ip.cn/index.php?ip=" + ip
+        res = requests.get(url, proxies=proxy)
+        html = res.content
+        soup = BeautifulSoup(html)
+        result_ll = soup.findAll("div", {"class": "well"})
+        if res.status_code == 200 and len(result_ll) != 0:
+            print "normal proxy ip:{ip}".format(ip=ip)
+            write_proxy_txt(ip + '\t' + port + '\n')
+        elif len(result_ll) == 0:
+            print "unavailable proxy ip:{ip}".format(ip=ip)
+        else:
+            print "exception code proxy ip:{ip}".format(ip=ip)
+    except Exception, e:
+        print "exception proxy ip:{ip}".format(ip=ip)
+
+
+from threadpool import ThreadPool
+from threadpool import makeRequests
+
+path_root = "c:/ip_info"
+
+@elapse
+def filter_proxy():
+    path = path_root + "/proxy_ori.txt"
+    lines = []
+    if os.path.exists(path_root + "/proxy.txt"):
+        os.remove(path_root + "/proxy.txt")
+
+    ss = set()
+    with open(path, "r") as f:
+        lines = f.readlines()
+        ll = []
+        for line in lines:
+            if line.find(":") > 0:
+                ip = line.split(":")[0]
+                port = line.split(":")[1].split()[0]
+            elif len(line.split()) != 2:
+                continue
+            else:
+                ip = line.split()[0]
+                port = line.split()[1]
+            if ip in ss:
+                continue
+            else:
+                ss.add(ip)
+            ll.append((ip, port))
+        print "proxy num is:" + str(len(ll))
+
+        pool = ThreadPool(200)
+        requests_pool = makeRequests(is_proxy_available, [([l[0], l[1]], None) for l in ll])
+        [pool.putRequest(req) for req in requests_pool]
+        pool.wait()
 
 
 if __name__ == '__main__':
@@ -233,6 +312,8 @@ if __name__ == '__main__':
     # for i in get_ip_from_file():
     #     print i
 
-    proxy = "http://111.13.7.119:80"
-    get_address(ip, proxy)
+    # proxy = "http://111.13.7.119:80"
+    # get_address(ip, proxy)
     # time.sleep(10)
+    filter_proxy()
+    # print [1, 2, 3] * 5

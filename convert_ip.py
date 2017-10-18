@@ -65,7 +65,7 @@ def get_add_to_table_sql(line):
         msg = escape_string(arr[2])
         msg1 = escape_string(arr[3])
 
-    sql = "INSERT INTO `kb_ip_address_all` " \
+    sql = "INSERT INTO `kb_ip_address_all_innodb` " \
           "VALUES ('{ip_start}', '{ip_end}', '0', '{country}', '', '', '0', '0', '{msg}', '', '', '{ip_start_str}', '{ip_end_str}','{msg1}');".format(
         ip_start=ip_start, ip_end=ip_end, country=country, msg=msg, ip_start_str=ip_start_str, ip_end_str=ip_end_str,
         msg1=msg1)
@@ -76,7 +76,7 @@ def get_add_to_table_sql(line):
 @elapse
 def add_to_table():
     path = "c:/ip_info/result/ip_info_"
-    for i in range(2, 50):
+    for i in range(0, 50):
         path_ = path + str(i) + ".txt"
         conn = getMySQLConnection()
         cur = conn.cursor()
@@ -97,4 +97,5 @@ def add_to_table():
 
 if __name__ == '__main__':
     # print MySQLdb.escape_string("Seoul Seoul-t'ukpyolsi Korea Republic".encode('utf-8'))
+    # innodb insert 5 million data 2809 seconds
     add_to_table()
