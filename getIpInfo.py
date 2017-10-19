@@ -42,7 +42,7 @@ def init_proxy():
         for l in lines:
             if len(l.split()) == 2:
                 proxy_free.append("http://{ip}:{port}".format(ip=l.split()[0], port=l.split()[1]))
-    proxy_free = proxy_free * 8
+    proxy_free = proxy_free * 6
 
 
 lock3 = get_thread_lock()
@@ -198,13 +198,15 @@ def get_address(ip=None, proxy=None):
             return
         html = res.content
         target = ""
-        dammit = chardet.detect(html)["encoding"]
-        if dammit.lower() != "UTF-8".lower():
+        # dammit = chardet.detect(html)["encoding"]
+        if True:
+            # 这种方式解析速度更快
             # 针对乱码的情况，通过正则解析
             target = get_info_from_html(html)
             if target == "":
                 # 解析错误的情况
                 error_handle(ip, proxy)
+                remove_proxy(proxy)
                 return
         else:
             soup = BeautifulSoup(html)
@@ -374,8 +376,8 @@ def filter_proxy():
             else:
                 ss.add(ip)
             ll.append((ip, port))
-
-        pool = ThreadPool(100)
+        print "proxy num is:" + str(len(ll))
+        pool = ThreadPool(200)
         requests_pool = makeRequests(is_proxy_available, [([l[0], l[1]], None) for l in ll])
         [pool.putRequest(req) for req in requests_pool]
         pool.wait()
@@ -421,7 +423,7 @@ def main():
             global_total, global_file_count, global_count = int(ll[0]), int(ll[1]), int(ll[2])
 
     init_proxy()
-    thread_num = 400
+    thread_num = 200
     for i in range(thread_num):
         threading.Thread(target=get_ip_run).start()
 

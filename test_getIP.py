@@ -11,6 +11,8 @@ import datetime
 from BeautifulSoup import BeautifulSoup
 from bs4 import UnicodeDammit
 
+from getIpInfo import filter_proxy
+
 def elapse(func):
     def deco(*args, **kwargs):
         starttime = datetime.datetime.now()
@@ -19,6 +21,7 @@ def elapse(func):
         print "elapse time: " + str((endtime - starttime).seconds) + " seconds"
 
     return deco
+
 
 # from bs4 import UnicodeDammit
 
@@ -212,7 +215,7 @@ def get_info_from_html(html):
             if index == 1:
                 t = t = t.decode("utf-8").encode("utf-8")
                 target += "," + t.split("：")[1].strip()  # .decode().encode("utf8")
-                print chardet.detect(target)
+                # print chardet.detect(target)
             if index == 2:
                 t = t.decode("ISO-8859-1").encode("utf-8")
                 ll = t.split(":")[1].strip().split(",")
@@ -259,40 +262,123 @@ from threadpool import makeRequests
 
 path_root = "c:/ip_info"
 
+
 @elapse
-def filter_proxy():
-    path = path_root + "/proxy_ori.txt"
-    lines = []
-    if os.path.exists(path_root + "/proxy.txt"):
-        os.remove(path_root + "/proxy.txt")
+def filter_proxy_test():
+    filter_proxy()
 
-    ss = set()
-    with open(path, "r") as f:
-        lines = f.readlines()
-        ll = []
-        for line in lines:
-            if line.find(":") > 0:
-                ip = line.split(":")[0]
-                port = line.split(":")[1].split()[0]
-            elif len(line.split()) != 2:
-                continue
-            else:
-                ip = line.split()[0]
-                port = line.split()[1]
-            if ip in ss:
-                continue
-            else:
-                ss.add(ip)
-            ll.append((ip, port))
-        print "proxy num is:" + str(len(ll))
+write_file_count = 0
+starttime = None
 
-        pool = ThreadPool(200)
-        requests_pool = makeRequests(is_proxy_available, [([l[0], l[1]], None) for l in ll])
-        [pool.putRequest(req) for req in requests_pool]
-        pool.wait()
+write_locak = threading.RLock()
 
+def convert_soup_html(html):
+    soup = BeautifulSoup(html)
+    result_ll = soup.findAll("div", {"class": "well"})
+    target = ""
+    if len(result_ll) == 0:
+        return
+    else:
+        target1 = result_ll[0]
+    for index, c in enumerate(target1):
+        if index == 1:
+            target += c.text.split(u"：")[1]
+        elif c.text.find("GeoIP") > -1:
+            ll = c.text.split(":")[1].split(",")
+            target = target + "," + " ".join([s.split()[0] for s in ll])
+            continue
+        elif index == 3 and c.text.find("GeoIP") == -1:
+            target = target + "," + c.text
+        elif index == 4:
+            target = target + "," + c.text
+    target = "" + "," + target
+    target = target.encode("utf8")
+
+def test_open_file():
+    while True:
+        str1 = """
+        <!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link href="http://s.ip-cdn.com" rel="dns-prefetch" />
+<title>47.71.10.0 - IP.cn - IP 地址查询 | 地理位置 | 手机归属地</title>
+<meta name="robots" content="all" />
+<meta name="Keywords" content="ip,ip查询,手机ip,本机ip,外网ip,ip地址查询,手机号,归属地,47.71.10.0">
+<meta name="Description" content="专业本机 IP 地址查询、手机 IP 地址、地理位置查询、IP 数据库、手机号归属地查询、电话号码黄页查询，可查广告、骚扰、快递、银行、保险、房地产、中介电话。">
+<link href='http://s.ip-cdn.com/css/bootstrap.min.css' rel='stylesheet' type='text/css'>
+<meta name="viewport" content="width=device-width, minimum-scale=0.5">
+<meta name="format-detection" content="telephone=no">
+<!--[if lt IE 8]>
+<script src="http://s.ip-cdn.com/js/ie8.js"></script>
+<![endif]-->
+<link href='http://s.ip-cdn.com/css/main.css' rel='stylesheet' type='text/css'>
+</head>
+<body onLoad="document.fs.ip.focus()">
+<div class="container-fluid">
+	<div class="header">
+		<a href="/"><img src="http://s.ip-cdn.com/img/logo.gif"></a>
+	</div>
+
+	<div class="mainbar">
+		<ul class="nav nav-pills center-pills">
+			<li class="active"><a href="/">IP 查询</a></li>
+			<li><a href="db.php">手机、电话号码数据库</a></li>
+			<li><a href="dns.html">DNS</a></li>
+			<li><a href="chnroutes.html">IP 列表</a></li>
+		</ul>
+	</div>
+
+	<div class="searchform">
+		<form name="fs" action="index.php" method="GET" class="form-search">
+			<input name="ip" type="text" placeholder="请输入要查询的域名或 IP 地址" class="span3">
+			<input id="s" type="submit" class="btn btn-primary" value="查询">
+		</form>
+	</div>
+
+	<div id="result"><div class="well"><p>您查询的 IP：<code>47.71.10.0</code></p><p>所在地理位置：<code>德国 </code></p><p>GeoIP: V�hl, Hessen, Germany</p><p>Vodafone D2 GmbH</p></div></div>
+
+        <div width="100%" align="center">
+		<div name="dashmain" id="dash-main-id-87884f" class="dash-main-2 87884f-9.9"></div><script type="text/javascript" charset="utf-8" src="http://www.dashangcloud.com/static/ds.js"></script>
+        </div>
+	<div class="footer">
+		<p>©2006-2017 IP.cn <a href="http://www.miitbeian.gov.cn/" target="_blank">沪ICP备15005128号-3</a> <script src="http://s19.cnzz.com/stat.php?id=123770&web_id=123770" language="JavaScript"></script></p>
+	</div>
+</div>
+</body>
+</html>
+
+        """
+        get_info_from_html(str1)
+        # convert_soup_html(str1)
+
+        write_locak.acquire()
+        global write_file_count
+        path = r"C:\temp\ip_info\proxy.txt"
+        with open(path, "w") as f:
+            f.write("")
+        with open(path, "a") as f:
+            f.write("1")
+        write_file_count += 1
+
+        if write_file_count == 1000:
+            endtime = datetime.datetime.now()
+            print "elapse time: " + str((endtime - starttime).seconds) + " seconds"
+        write_locak.release()
+
+def test_main():
+    global starttime
+    starttime = datetime.datetime.now()
+    # for i in range(10000):
+    #     test_open_file()
+    thread_num = 100
+    for i in range(thread_num):
+        tmp = threading.Thread(target=test_open_file)
+        tmp.setDaemon(False)
+        tmp.start()
 
 if __name__ == '__main__':
+    test_main()
     # str = u'<div id="result"><div class="well"><p>您查询的 IP：<code>47.71.10.0</code></p><p>所在地理位置：<code>德国 </code></p><p>GeoIP: V�hl, Hessen, Germany</p><p>Vodafone D2 GmbH</p></div></div></div>sss</div>'
     # print get_info_from_html(str)
     ip = "47.71.10.0"
@@ -315,5 +401,4 @@ if __name__ == '__main__':
     # proxy = "http://111.13.7.119:80"
     # get_address(ip, proxy)
     # time.sleep(10)
-    filter_proxy()
-    # print [1, 2, 3] * 5
+    filter_proxy_test()
