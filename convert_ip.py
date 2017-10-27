@@ -25,7 +25,8 @@ def elapse(func):
 
 
 DB = {
-    'host': '127.0.0.1',
+    # 'host': '127.0.0.1',
+    'host': '192.168.10.201',
     'port': 3306,
     'user': 'scorpion',
     'passwd': 'CM$ecThreat#2015',
@@ -561,9 +562,9 @@ def merge_two_db():
                         tmp_ip = 0
                     sql1 = "SELECT IP_START,IP_END,IP_START_STR,IP_END_STR,COUNTRY,AREA,CITY,LATITUDE,LONGITUDE,MESSAGE,CODE from kb_ip_address_merge " \
                            "WHERE IP_START >= {tmp_ip} and IP_START<{ip1} and IP_END > {ip2}".format(ip1=data['IP_END'],
-                                                                                                    ip2=item[
-                                                                                                        'IP_START'],
-                                                                                                    tmp_ip=tmp_ip)
+                                                                                                     ip2=item[
+                                                                                                         'IP_START'],
+                                                                                                     tmp_ip=tmp_ip)
 
                     # 算出来的空隙包含merge库里的多条记录
                     # sql1 = "SELECT IP_START,IP_END,IP_START_STR,IP_END_STR,COUNTRY,AREA from kb_ip_address_merge " \
@@ -805,7 +806,7 @@ def merge_two_db_2():
                         # print 1
                         pass
                     elif count1 == 1:
-                        #resNum += 1
+                        # resNum += 1
                         print "{start},{end},{start_str},{end_str},{count}".format(start=str(data['IP_END']),
                                                                                    end=str(item['IP_START']),
                                                                                    start_str=convert_int2Ip(
@@ -819,7 +820,7 @@ def merge_two_db_2():
                         ip_s = data['IP_END'] + 1
                         ip_e = re[1]
                         if ip_e == item['IP_START']:
-                            ip_e = ip_e -1
+                            ip_e = ip_e - 1
                         ip_s_s = convert_int2Ip(ip_s)
                         ip_e_s = convert_int2Ip(ip_e)
                         country = re[4].encode("utf8")
@@ -890,7 +891,7 @@ def merge_two_db_3():
             else:
                 if data:
                     print data['IP_END'], item['IP_START'], convert_int2Ip(data['IP_END']), convert_int2Ip(
-                       item['IP_START'])
+                        item['IP_START'])
                     # resNum += 1
                     # # 算出来的空隙左边界小于merge的某条数据的左边界，空隙右边界小于merge的某条数据的右边界
                     sql1 = "SELECT IP_START,IP_END,IP_START_STR,IP_END_STR,COUNTRY,AREA,CITY,LATITUDE,LONGITUDE,MESSAGE,CODE from kb_ip_address_merge " \
@@ -979,7 +980,7 @@ def merge_two_db_4():
     resNum = 0
     conn = getMySQLConnection()
     cur = conn.cursor()
-    sql = "SELECT `IP_START`, `IP_END` FROM kb_ip_address ORDER BY IP_START,IP_END"
+    sql = "SELECT `IP_START`, `IP_END` FROM KB_IP_ADDRESS ORDER BY IP_START,IP_END"
 
     count = cur.execute(sql)
     print 'find %d records' % count
@@ -989,7 +990,7 @@ def merge_two_db_4():
         data = None
         for index, d in enumerate(res):
             # if index % 1000 == 0:
-                # print index, resNum
+            # print index, resNum
 
             item = {}
             item['IP_START'] = d[0]
@@ -1000,7 +1001,7 @@ def merge_two_db_4():
                 if data:
                     resNum += 1
                     print data['IP_END'], item['IP_START'], convert_int2Ip(data['IP_END']), convert_int2Ip(
-                       item['IP_START'])
+                        item['IP_START'])
 
                     # # # 算出来的空隙左边界小于merge的某条数据的左边界，空隙右边界小于merge的某条数据的右边界
                     # sql1 = "SELECT IP_START,IP_END,IP_START_STR,IP_END_STR,COUNTRY,AREA,CITY,LATITUDE,LONGITUDE,MESSAGE,CODE from kb_ip_address_merge " \
@@ -1083,6 +1084,56 @@ def merge_two_db_4():
     print u'\n\n\n==================处理结束 耗时 %f 秒 =================\n\n\n' % (timeEnd - timeStart)
 
 
+def convert_to_redis():
+    print u'======== 合并数据库 ========'
+    timeStart = time.time()
+    conn = getMySQLConnection()
+    cur = conn.cursor()
+    sql = "SELECT * FROM KB_IP_ADDRESS ORDER BY IP_START,IP_END"
+
+    count = cur.execute(sql)
+    result = []
+    print 'find %d records' % count
+    if count:
+        res = cur.fetchall()
+        for re in res:
+            IP_START = str(re[0])
+            IP_END = str(re[1])
+            IP_NETWORK = str(re[2])
+            COUNTRY = re[3].encode('utf-8')
+            AREA = re[4].encode('utf-8')
+            CITY = re[5].encode('utf-8')
+            LATITUDE = re[6]
+            if LATITUDE is None:
+                LATITUDE = ""
+            else:
+                LATITUDE = str(LATITUDE)
+            LONGITUDE = re[7]
+            if LONGITUDE is None:
+                LONGITUDE = ""
+            else:
+                LONGITUDE = str(LONGITUDE)
+            MESSAGE = re[8].encode('utf-8')
+            CODE = re[9]
+            if CODE is None:
+                CODE = ""
+            else:
+                CODE = CODE.encode('utf-8')
+            COUNTRY_EN = re[10].encode('utf-8')
+
+            result.append(",".join(
+                [IP_START, IP_END, IP_NETWORK, COUNTRY, AREA, CITY, LATITUDE, LONGITUDE, MESSAGE, CODE,
+                 COUNTRY_EN]) + "\n")
+    cur.close()
+    conn.close()
+    path = r"C:\Users\Administrator\Desktop\GEOIP_DATAS.txt"
+    with open(path, "w") as f:
+        f.writelines(result)
+
+    timeEnd = time.time()
+    print u'\n\n\n==================处理结束 耗时 %f 秒 =================\n\n\n' % (timeEnd - timeStart)
+
+
 if __name__ == '__main__':
     # print "北京北京".decode('utf8').encode("utf8")[:-1]
     # print MySQLdb.escape_string("Seoul Seoul-t'ukpyolsi Korea Republic".encode('utf-8'))
@@ -1097,7 +1148,8 @@ if __name__ == '__main__':
     # update_country()
     # update_city()
     # merge_two_db()
-    #merge_two_db_1()
+    # merge_two_db_1()
     # merge_two_db_2()
     # merge_two_db_3()
-    merge_two_db_4()
+    # merge_two_db_4()
+    convert_to_redis()
