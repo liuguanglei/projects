@@ -440,7 +440,7 @@ def update_country():
         res = cur.fetchall()
         for re in res:
             country = re[0].encode("utf8")
-            if country == "印度":
+            if country == "印度" or country == "俄罗斯":
                 sql1 = "SELECT CODE_2,LATITUDE,LONGITUDE from kb_country_geo WHERE COUNTRY_ZH like '{country}'".format(
                     country=country)
             else:
