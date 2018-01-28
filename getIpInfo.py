@@ -7,6 +7,10 @@ import Queue
 import traceback
 import thread
 import os
+import socket
+import struct
+import re
+import chardet
 
 import threading
 from BeautifulSoup import BeautifulSoup
@@ -31,12 +35,14 @@ def get_thread_lock():
 
 
 def init_proxy():
+    global proxy_free
     path = path_root + "/proxy.txt"
     with open(path, "r") as f:
         lines = f.readlines()
         for l in lines:
             if len(l.split()) == 2:
                 proxy_free.append("http://{ip}:{port}".format(ip=l.split()[0], port=l.split()[1]))
+    proxy_free = proxy_free * 5
 
 
 lock3 = get_thread_lock()
@@ -130,7 +136,7 @@ def write_file(content, path=None):
         if path is None:
             path = path_root + "/result/ip_info_{count}.txt".format(count=str(global_file_count))
     with open(path, 'a') as f:
-        f.write(content.encode("utf8") + "\n")
+        f.write(content + "\n")
 
     path_1 = path_root + "/ip_count_flag.txt"
     with open(path_1, "w") as f:
@@ -169,6 +175,7 @@ def remove_ip_from_current_req_file(ip):
         for index, line in enumerate(lines):
             if ip == line.split()[0]:
                 del_index = index
+                break
         if del_index is not None:
             del lines[del_index]
     with open(path, 'w') as f:
@@ -186,32 +193,45 @@ def get_address(ip=None, proxy=None):
             proxy = get_proxy()
         # print "begin request d ip:{ip},proxy:{proxy}".format(ip=ip, proxy=proxy)
         res = requests.get(url, proxies={"http": proxy})
+
         if res.status_code != 200:
             error_handle(ip, proxy)
             return
         html = res.content
-        soup = BeautifulSoup(html)
         target = ""
-        result_ll = soup.findAll("div", {"class": "well"})
-        if len(result_ll) == 0:
-            # 比较有可能是代理被封的情况,因此把代理移除
-            error_handle(ip, proxy)
-            remove_proxy(proxy)
-            return
+        # dammit = chardet.detect(html)["encoding"]
+        if True:
+            # 这种方式解析速度更快
+            # 针对乱码的情况，通过正则解析
+            target = get_info_from_html(html)
+            if target == "":
+                # 解析错误的情况
+                error_handle(ip, proxy)
+                remove_proxy(proxy)
+                return
         else:
-            target1 = result_ll[0]
-        for index, c in enumerate(target1):
-            if index == 1:
-                target += c.text.split(u"：")[1]
-            elif c.text.find("GeoIP") > -1:
-                ll = c.text.split(":")[1].split(",")
-                target = target + "," + " ".join([s.split()[0] for s in ll])
-                continue
-            elif index == 3 and c.text.find("GeoIP") == -1:
-                target = target + "," + c.text
-            elif index == 4:
-                target = target + "," + c.text
-        target = ip + "," + target
+            soup = BeautifulSoup(html)
+            result_ll = soup.findAll("div", {"class": "well"})
+            if len(result_ll) == 0:
+                # 比较有可能是代理被封的情况,因此把代理移除
+                error_handle(ip, proxy)
+                remove_proxy(proxy)
+                return
+            else:
+                target1 = result_ll[0]
+            for index, c in enumerate(target1):
+                if index == 1:
+                    target += c.text.split(u"：")[1]
+                elif c.text.find("GeoIP") > -1:
+                    ll = c.text.split(":")[1].split(",")
+                    target = target + "," + " ".join([s.split()[0] for s in ll])
+                    continue
+                elif index == 3 and c.text.find("GeoIP") == -1:
+                    target = target + "," + c.text
+                elif index == 4:
+                    target = target + "," + c.text
+            target = ip + "," + target
+            target = target.encode("utf8")
         write_file(target)
         back_proxy(proxy)
         # print target
@@ -222,8 +242,10 @@ def get_address(ip=None, proxy=None):
     except IndexError, e:
         print "IndexError d ip:{ip},proxy:{proxy}".format(ip=ip, proxy=proxy)
         error_handle(ip, proxy)
+        back_proxy(proxy)
     except Exception, e:
         print traceback.format_exc()
+        print "Exception d ip:{ip},proxy:{proxy}".format(ip=ip, proxy=proxy)
         error_handle(ip, proxy)
         back_proxy(proxy)
     finally:
@@ -251,10 +273,10 @@ def gen_ip_d_segment(num=None):
     count = 1000
     if num:
         count = num
-    for a in range(_a, 255):
+    for a in range(_a, 256):
         if a == 10 or a == 127 or a == 0:
             continue
-        for b in range(0, 255):
+        for b in range(0, 256):
             if _b:
                 if b < _b:
                     continue
@@ -268,7 +290,7 @@ def gen_ip_d_segment(num=None):
             if a == 172 and b >= 16 and b <= 31:
                 continue
 
-            for c in range(0, 255):
+            for c in range(0, 256):
                 if _c:
                     if c <= _c:
                         continue
@@ -289,8 +311,28 @@ def gen_ip_d_segment(num=None):
                     yield ".".join(tmp + [str(0)])
     lock2.release()
 
+def get_ip_from_file():
 
-gen_ip = gen_ip_d_segment()
+    path = "c:/ip_info/z_current_req_and_error_bf.txt"
+    path1 = "c:/ip_info/ip_count_flag_from_file.txt"
+    count_index_file = None
+    if os.path.exists(path1) is False:
+        count_index_file = None
+    else:
+        with open(path1, "r") as f:
+            count_index_file = f.read()
+    lock2.acquire()
+    with open(path, "r") as f:
+        for index, line in enumerate(f):
+            if count_index_file is not None and index <= int(count_index_file):
+                pass
+            else:
+                with open(path1, "w") as f1:
+                    f1.write(str(index))
+                yield line.strip()
+    lock2.release()
+# gen_ip = gen_ip_d_segment() # from calculate
+gen_ip = get_ip_from_file() # from file
 
 lock11 = get_thread_lock()
 
@@ -356,11 +398,41 @@ def filter_proxy():
             else:
                 ss.add(ip)
             ll.append((ip, port))
-
-        pool = ThreadPool(100)
+        print "proxy num is:" + str(len(ll))
+        pool = ThreadPool(200)
         requests_pool = makeRequests(is_proxy_available, [([l[0], l[1]], None) for l in ll])
         [pool.putRequest(req) for req in requests_pool]
         pool.wait()
+
+
+def get_info_from_html(html):
+    pattern = re.compile(r'<div class="well">.*?</div>')
+    match = pattern.search(html)
+    if match:
+        tmp = match.group()
+        p1 = re.compile(r'<p>.*?</p>')
+        ll = p1.findall(tmp)
+        if tmp.find("<a href=")>-1:
+            del ll[2]
+        target = ""
+        for index, l in enumerate(ll):
+            t = l.replace('<p>', '').replace('</p>', '').replace('<code>', '').replace('</code>', '')
+            if index == 0:
+                target += t.split("：")[1].strip()
+            if index == 1:
+                t = t = t.decode("utf-8").encode("utf-8")
+                target += "," + t.split("：")[1].strip()
+                # print chardet.detect(target)
+            if index == 2:
+                t = t.decode("ISO-8859-1").encode("utf-8")
+                ll = t.split(":")[1].strip().split(",")
+                target += "," + " ".join([s.split()[0] for s in ll])
+            if index == 3:
+                target += "," + t.strip()
+        return target
+    else:
+        print "get_info_from_html return empyt string"
+        return ""
 
 
 def main():
@@ -375,7 +447,7 @@ def main():
             global_total, global_file_count, global_count = int(ll[0]), int(ll[1]), int(ll[2])
 
     init_proxy()
-    thread_num = 85
+    thread_num = 1
     for i in range(thread_num):
         threading.Thread(target=get_ip_run).start()
 
@@ -396,6 +468,8 @@ if __name__ == '__main__':
     # print get_ip_d()
     # print get_ip_d()
 
+    # for i in range(100):
+    #     print get_ip_d()
     # remove_proxy("http://118.76.255.52:80")
     # filter_proxy()
     main()
